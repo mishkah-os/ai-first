@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  postgres-ai-first:
+    image: postgres:16
+    container_name: ai_first_db
+    environment:
+      POSTGRES_USER: aifirst
+      POSTGRES_PASSWORD: aifirst_password
+      POSTGRES_DB: ai_first_platform
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata_ai_first:/var/lib/postgresql/data
+    restart: always
+
+volumes:
+  pgdata_ai_first:
