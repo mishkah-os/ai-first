@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MAS V2 — Bridge + Chart Test</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="mas.core.v2.js"></script>
+  <style>
+    body { font-family: 'Segoe UI', Tahoma, sans-serif; }
+    [data-theme="dark"] { background: #1a1a2e; color: #e0e0e0; }
+    .card { background: #16213e; border-radius: 12px; padding: 20px; margin: 12px 0; }
+    .btn { padding: 8px 16px; border-radius: 8px; border: none; cursor: pointer; font-weight: bold; margin: 4px; }
+    .btn-blue { background: #4361ee; color: white; }
+    .btn-red { background: #e63946; color: white; }
+    .btn-green { background: #2ec4b6; color: white; }
+    .btn-purple { background: #7209b7; color: white; }
+    .input { padding: 8px 12px; border-radius: 8px; border: 1px solid #333; background: #0f3460; color: white; width: 200px; }
+    .done { text-decoration: line-through; opacity: 0.5; }
+    .badge { display: inline-block; background: #4361ee30; color: #4361ee; padding: 2px 8px; border-radius: 4px; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+
+  <script>
+    const { D, app, component, hook, load, loaded } = MAS
+
+    // ── Hook: observe all renders ────────────────────────
+    hook('onRender', ({ db }) => {
+      console.log('[render]', 'sales:', db.sales, 'chartLoaded:', loaded('https://cdn.jsdelivr.net/npm/chart.js'))
+    })
+
+    // ── Component: todo-item ────────────────────────────
+    component('todo-item', (props, D) =>
+      D.li({key: props.id, 'data-id': props.id, class: 'flex items-center gap-3 py-2 border-b border-gray-700'}, [
+        D.span({gkey: 'toggle', class: props.done ? 'done flex-1 cursor-pointer' : 'flex-1 cursor-pointer'}, props.text),
+        D.span({class: 'badge'}, props.done ? '✓' : '○'),
+        D.button({gkey: 'del', class: 'btn btn-red text-sm'}, '✕')
+      ])
+    )
+
+    // ── Component: counter ──────────────────────────────
+    component('counter-widget', (props, D) =>
+      D.div({class: 'card'}, [
+        D.h3({class: 'text-lg mb-3'}, '🔢 ' + props.label),
+        D.div({class: 'flex items-center gap-4'}, [
+          D.button({gkey: 'dec', class: 'btn btn-red'}, '−'),
+          D.span({class: 'text-3xl font-bold min-w-[60px] text-center'}, String(props.value)),
+          D.button({gkey: 'inc', class: 'btn btn-green'}, '+'),
+          D.button({gkey: 'reset', class: 'btn btn-blue'}, '↺')
+        ])
+      ])
+    )
+
+    // ── State ───────────────────────────────────────────
+    const db = {
+      env: { lang: 'ar', theme: 'dark' },
+      count: 0,
+      input: '',
+      chartLoaded: false,
+      sales: [12, 19, 3, 5, 2, 3, 9],
+      todos: [
+        { id: 1, text: 'تصميم واجهة المشروع', done: false },
+        { id: 2, text: 'بناء الـ API', done: true },
+        { id: 3, text: 'اختبار الأداء', done: false }
+      ],
+      mdContent: '## مرحباً بالعالم\n\nهذا **نص** يحتوي على `كود` و HTML خام.\n\n- عنصر أول\n- عنصر ثاني'
+    }
+
+    // ── Logic ───────────────────────────────────────────
+    function handleInc(e, ctx) { ctx.set({ count: ctx.db.count + 1 }) }
+    function handleDec(e, ctx) { ctx.set({ count: ctx.db.count - 1 }) }
+    function handleReset(e, ctx) { ctx.set({ count: 0 }) }
+    function handleTodoInput(e, ctx) { ctx.set({ input: e.target.value }) }
+    function handleAdd(e, ctx) {
+      if (!ctx.db.input.trim()) return
+      ctx.set({
+        todos: [...ctx.db.todos, { id: Date.now(), text: ctx.db.input, done: false }],
+        input: ''
+      })
+    }
+    function handleToggle(e, ctx) {
+      const id = +e.target.closest('[data-id]').dataset.id
+      ctx.set({ todos: ctx.db.todos.map(t => t.id === id ? {...t, done: !t.done} : t) })
+    }
+    function handleDel(e, ctx) {
+      const id = +e.target.closest('[data-id]').dataset.id
+      ctx.set({ todos: ctx.db.todos.filter(t => t.id !== id) })
+    }
+    function handleLang(e, ctx) {
+      const lang = ctx.db.env.lang === 'ar' ? 'en' : 'ar'
+      ctx.set({ env: { ...ctx.db.env, lang } })
+    }
+    function handleAddSale(e, ctx) {
+      ctx.set({ sales: [...ctx.db.sales, Math.floor(Math.random() * 20) + 1] })
+    }
+
+    // ── Orders ──────────────────────────────────────────
+    const orders = {
+      inc:     { on: 'click',  do: handleInc },
+      dec:     { on: 'click',  do: handleDec },
+      reset:   { on: 'click',  do: handleReset },
+      newTodo: { on: ['input','keydown'], do: (e, ctx) => {
+        if (e.type === 'keydown' && e.key === 'Enter') return handleAdd(e, ctx)
+        if (e.type === 'input') return handleTodoInput(e, ctx)
+      }},
+      add:     { on: 'click', do: handleAdd },
+      toggle:  { on: 'click', do: handleToggle },
+      del:     { on: 'click', do: handleDel },
+      lang:    { on: 'click', do: handleLang },
+      addSale: { on: 'click', do: handleAddSale }
+    }
+
+    // ── Body ────────────────────────────────────────────
+    const body = (db) => {
+      const isAr = db.env.lang === 'ar'
+      const chartReady = loaded('https://cdn.jsdelivr.net/npm/chart.js')
+
+      return D.div({class: 'max-w-2xl mx-auto p-6'}, [
+        D.title(isAr ? 'اختبار MAS V2' : 'MAS V2 Test'),
+
+        // Header
+        D.div({class: 'flex justify-between items-center mb-6'}, [
+          D.h1({class: 'text-2xl font-bold'}, '⚡ MAS Core V2'),
+          D.button({gkey: 'lang', class: 'btn btn-blue'}, isAr ? 'EN' : 'AR')
+        ]),
+
+        // Counter component
+        D.counterWidget({ label: isAr ? 'العداد' : 'Counter', value: db.count }),
+
+        // ═══════════════════════════════════════════════
+        // 🎯 CHART.JS via _bridge — The Magic!
+        // ═══════════════════════════════════════════════
+        D.div({class: 'card'}, [
+          D.div({class: 'flex justify-between items-center mb-3'}, [
+            D.h3({class: 'text-lg'}, isAr ? '📊 الرسم البياني (Bridge)' : '📊 Chart (Bridge)'),
+            D.button({gkey: 'addSale', class: 'btn btn-purple'}, isAr ? '+ بيانات' : '+ Data')
+          ]),
+          !chartReady
+            ? D.p({class: 'text-gray-500 text-center py-8'}, isAr ? '⏳ جاري تحميل Chart.js...' : '⏳ Loading Chart.js...')
+            : D.canvas({
+                _bridge: (el) => {
+                  // First call: create chart
+                  if (!el._chart) {
+                    el._chart = new Chart(el, {
+                      type: 'bar',
+                      data: {
+                        labels: db.sales.map((_, i) => isAr ? 'شهر ' + (i+1) : 'M' + (i+1)),
+                        datasets: [{
+                          label: isAr ? 'المبيعات' : 'Sales',
+                          data: db.sales,
+                          backgroundColor: 'rgba(67, 97, 238, 0.6)',
+                          borderColor: 'rgba(67, 97, 238, 1)',
+                          borderWidth: 1
+                        }]
+                      },
+                      options: {
+                        responsive: true,
+                        plugins: { legend: { labels: { color: '#e0e0e0' } } },
+                        scales: {
+                          y: { ticks: { color: '#e0e0e0' }, grid: { color: '#333' } },
+                          x: { ticks: { color: '#e0e0e0' }, grid: { color: '#333' } }
+                        }
+                      }
+                    })
+                  } else {
+                    // Subsequent calls: just update data
+                    el._chart.data.labels = db.sales.map((_, i) => isAr ? 'شهر ' + (i+1) : 'M' + (i+1))
+                    el._chart.data.datasets[0].data = db.sales
+                    el._chart.data.datasets[0].label = isAr ? 'المبيعات' : 'Sales'
+                    el._chart.update()
+                  }
+                  // Return cleanup function
+                  return () => { if(el._chart) { el._chart.destroy(); el._chart = null; } }
+                },
+                width: 500,
+                height: 250
+              })
+        ]),
+
+        // ═══════════════════════════════════════════════
+        // 📝 Raw HTML via _html
+        // ═══════════════════════════════════════════════
+        D.div({class: 'card'}, [
+          D.h3({class: 'text-lg mb-3'}, isAr ? '📝 حقن HTML خام (_html)' : '📝 Raw HTML (_html)'),
+          D.div({
+            class: 'bg-gray-800 p-4 rounded-lg',
+            _html: '<div style="border-left:3px solid #4361ee;padding-left:12px;margin:8px 0">' +
+                   '<strong style="color:#2ec4b6">HTML خام مباشرة</strong><br>' +
+                   '<code style="color:#e63946">_html</code> يحقن أي محتوى HTML دون تدخل الـ VDOM' +
+                   '</div>' +
+                   '<table style="width:100%;border-collapse:collapse;margin-top:8px">' +
+                   '<tr><th style="border:1px solid #333;padding:4px;background:#0f3460">الميزة</th><th style="border:1px solid #333;padding:4px;background:#0f3460">الحالة</th></tr>' +
+                   '<tr><td style="border:1px solid #333;padding:4px">_bridge (Chart.js)</td><td style="border:1px solid #333;padding:4px">✅</td></tr>' +
+                   '<tr><td style="border:1px solid #333;padding:4px">_html (Raw)</td><td style="border:1px solid #333;padding:4px">✅</td></tr>' +
+                   '<tr><td style="border:1px solid #333;padding:4px">MAS.load() (Lazy)</td><td style="border:1px solid #333;padding:4px">✅</td></tr>' +
+                   '</table>'
+          })
+        ]),
+
+        // Todo section
+        D.div({class: 'card'}, [
+          D.h3({class: 'text-lg mb-3'}, isAr ? '📋 المهام' : '📋 Todos'),
+          D.div({class: 'flex gap-2 mb-4'}, [
+            D.input({gkey: 'newTodo', class: 'input flex-1', value: db.input,
+              placeholder: isAr ? 'مهمة جديدة...' : 'New todo...'}),
+            D.button({gkey: 'add', class: 'btn btn-green'}, '+')
+          ]),
+          db.todos.length === 0
+            ? D.p({class: 'text-gray-500 text-center py-4'}, isAr ? 'لا توجد مهام' : 'No todos')
+            : D.ul(db.todos.map(todo =>
+                D.todoItem({ id: todo.id, text: todo.text, done: todo.done })
+              ))
+        ]),
+
+        // Features summary
+        D.div({class: 'card text-sm text-gray-400 mt-4'}, [
+          D.p('✅ Orders: clear {gkey: {on, do}} format'),
+          D.p('✅ Components: <counter-widget> & <todo-item>'),
+          D.p('✅ _bridge: Chart.js canvas — VDOM skips children'),
+          D.p('✅ _html: raw HTML injection'),
+          D.p('✅ MAS.load(): lazy script loading'),
+          D.p('✅ Cleanup: bridge returns destroy function'),
+          D.p('✅ Multi-event: newTodo handles input + keydown')
+        ])
+      ])
+    }
+
+    // ── Mount ───────────────────────────────────────────
+    const myApp = app(body, db, orders).mount('#app')
+
+    // ── Lazy load Chart.js ──────────────────────────────
+    load('https://cdn.jsdelivr.net/npm/chart.js').then(() => {
+      console.log('✅ Chart.js loaded!')
+      myApp.set({ chartLoaded: true }) // triggers re-render
+    })
+  </script>
+</body>
+</html>

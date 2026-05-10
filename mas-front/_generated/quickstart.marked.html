@@ -1,0 +1,161 @@
+<!-- m-bulk:head -->
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="mas.tokens.css">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="mas.core.js"></script>
+</head>
+
+<!-- m-end:head -->
+<!-- m-bulk:shell_module -->
+<body>
+<div id="app"></div>
+<script>
+const { D, app, module, router } = MAS
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// MODULE: shell — nav handled automatically by data-href
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+module('shell', {
+  db: {},
+  orders: {
+    lang(e, $)  { $.setEnv('lang', $.env.lang === 'ar' ? 'en' : 'ar') },
+    theme(e, $) { $.setEnv('theme', $.env.theme === 'dark' ? 'light' : 'dark') }
+  }
+})
+
+<!-- m-end:shell_module -->
+<!-- m-bulk:counter_module -->
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// MODULE: counter
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+module('counter', {
+  db: { value: 0, showMsg: false },
+  persist: ['value'], // ✨ Auto Save to LocalStorage!
+  orders: {
+    inc(e, $)       { $.set({ value: $.db.value + 1 }) },
+    dec(e, $)       { $.set({ value: $.db.value - 1 }) },
+    reset(e, $)     { $.set({ value: 0 }) },
+    toggleMsg(e, $) { $.toggle('showMsg') }
+  },
+  ui: ($, D) => {
+    const ar = $.env.lang === 'ar'
+    return D.div({ class: 'mas-card mb-4' }, [
+      D.h2({ class: 'text-lg font-bold mb-3 flex justify-between' }, [
+        ar ? '🔢 العداد (محفوظ تلقائياً)' : '🔢 Counter (Persisted)',
+        D.button({ gkey: 'toggleMsg', class: 'text-xs mas-btn mas-btn-ghost' }, $.db.showMsg ? (ar ? 'اخفاء' : 'Hide') : (ar ? 'اظهار' : 'Show'))
+      ]),
+      D.show($.db.showMsg, D.div({ class: 'p-2 mb-3 bg-blue-500/10 text-blue-400 rounded text-sm' }, ar ? 'رسالة شرطية — D.show() تعمل!' : 'Conditional — D.show() works!')),
+      D.div({ class: 'flex items-center gap-4' }, [
+        D.button({ gkey: 'dec', class: 'mas-btn mas-btn-danger' }, '−'),
+        D.span({ class: 'text-3xl font-bold min-w-[60px] text-center' }, String($.db.value)),
+        D.button({ gkey: 'inc', class: 'mas-btn mas-btn-success' }, '+'),
+        D.button({ gkey: 'reset', class: 'mas-btn mas-btn-ghost' }, '↺')
+      ])
+    ])
+  }
+})
+
+<!-- m-end:counter_module -->
+<!-- m-bulk:todo_module -->
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// MODULE: todo
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+module('todo', {
+  db: {
+    items: [{ id: 1, name: 'تصميم الواجهة', done: false }, { id: 2, name: 'ربط API', done: true }],
+    input: ''
+  },
+  persist: ['items'], // ✨ Auto Save Items!
+  orders: {
+    add(e, $) {
+      const t = $.db.input.trim(); if (!t) return
+      $.push('items', { id: Date.now(), name: t, done: false })
+      $.set({ input: '' })
+    },
+    del(e, $) { $.drop('items', $.id(e)) },
+    toggle(e, $) {
+      const item = $.item('items', e)
+      $.patch('items', item.id, { done: !item.done })
+    },
+    input: { on: ['input', 'keydown'], do(e, $) {
+      if (e.type === 'keydown' && e.key === 'Enter') { const t = $.db.input.trim(); if (!t) return; $.push('items', { id: Date.now(), name: t, done: false }); $.set({ input: '' }); return }
+      // ✨ Smart Binding!
+      if (e.type === 'input') $.bind(e)
+    }}
+  },
+  ui: ($, D) => {
+    const ar = $.env.lang === 'ar'
+    return D.div({ class: 'mas-card' }, [
+      D.h2({ class: 'text-lg font-bold mb-3' }, ar ? '📋 المهام (محفوظة تلقائياً)' : '📋 Todos (Persisted)'),
+      D.div({ class: 'flex gap-2 mb-4' }, [
+        D.input({ name: 'input', gkey: 'input', class: 'mas-input flex-1', value: $.db.input, placeholder: ar ? 'مهمة جديدة...' : 'New task...' }),
+        D.button({ gkey: 'add', class: 'mas-btn mas-btn-primary' }, '+')
+      ]),
+      $.db.items.length
+        ? D.ul($.db.items.map(i =>
+            D.li({ key: i.id, 'data-id': i.id, class: 'flex items-center gap-3 py-3 border-b border-[var(--mas-border)]' }, [
+              D.span({ gkey: 'toggle', class: 'flex-1 cursor-pointer ' + (i.done ? 'line-through opacity-40' : '') }, i.name),
+              D.span({ class: 'mas-badge' }, i.done ? '✓' : '○'),
+              D.button({ gkey: 'del', class: 'mas-btn mas-btn-danger text-xs px-2 py-1' }, '✕')
+            ])
+          ))
+        : D.p({ class: 'text-center py-6 opacity-50' }, ar ? 'لا توجد مهام' : 'No tasks')
+    ])
+  }
+})
+
+<!-- m-end:todo_module -->
+<!-- m-bulk:body_router -->
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// BODY
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+const body = (db) => {
+  const ar = (db.env && db.env.lang) === 'ar'
+  const page = (db._route && db._route.name) || 'home'
+  return D.div({ class: 'max-w-lg mx-auto p-6 min-h-screen' }, [
+    D.title(ar ? 'تطبيق MAS' : 'MAS App'),
+    D.nav({ class: 'flex items-center justify-between mb-6' }, [
+      D.div({ class: 'flex gap-4' }, [
+        // ✨ Auto Routing with data-href
+        D.a({ 'data-href': '/', class: 'font-bold cursor-pointer ' + (page === 'home' ? 'text-[var(--mas-primary)]' : 'opacity-50') }, '⚡ ' + (ar ? 'رئيسية' : 'Home')),
+        D.a({ 'data-href': '/about', class: 'cursor-pointer ' + (page === 'about' ? 'text-[var(--mas-primary)]' : 'opacity-50') }, ar ? 'حول' : 'About'),
+      ]),
+      D.div({ class: 'flex gap-2' }, [
+        D.button({ gkey: 'shell.theme', class: 'mas-btn mas-btn-ghost text-xs' }, (db.env && db.env.theme) === 'dark' ? '☀️' : '🌙'),
+        D.button({ gkey: 'shell.lang', class: 'mas-btn mas-btn-ghost text-xs' }, ar ? 'EN' : 'AR'),
+      ])
+    ]),
+    page === 'about'
+      ? D.div({ class: 'mas-card' }, [
+          D.h2({ class: 'text-lg font-bold mb-3' }, ar ? 'عن الميزات الجديدة' : 'New Features'),
+          D.ul({ class: 'list-disc list-inside space-y-2 opacity-80' }, [
+            D.li('Auto Routing (data-href)'),
+            D.li('Auto Persistence (localStorage)'),
+            D.li('Smart Form Binding ($.bind)')
+          ])
+        ])
+      : D.div([D.counter(), D.todo()])
+  ])
+}
+
+<!-- m-end:body_router -->
+<!-- m-bulk:mount_close -->
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// MOUNT
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+const myApp = app(body, { 
+  env: { lang: 'ar', theme: 'dark' },
+  persistEnv: ['lang', 'theme'] // ✨ Auto save environment variables too!
+}).mount('#app')
+router(myApp, { '/': 'home', '/about': 'about', '*': 'home' }, {
+  afterEach: () => window.scrollTo(0, 0)
+}).start()
+</script>
+</body>
+</html>
+
+<!-- m-end:mount_close -->

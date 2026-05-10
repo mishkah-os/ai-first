@@ -205,7 +205,7 @@ class CoreEngine:
     async def describe(self, module_slug: str = None) -> list[dict]:
         """Return the full project tree: modules → components → pillar names."""
         async with self.pool.acquire() as conn:
-            q = "SELECT id, name, slug FROM module"
+            q = "SELECT id, name, slug, assembler FROM module"
             args = []
             if module_slug:
                 q += " WHERE slug=$1"
@@ -216,7 +216,7 @@ class CoreEngine:
             result = []
             for m in modules:
                 comps = await conn.fetch(
-                    """SELECT c.id, c.name, c.slug, c.kind, c.target,
+                    """SELECT c.id, c.name, c.slug, c.kind, c.target, c.meta,
                               array_agg(p.kind ORDER BY p.kind)
                                 FILTER (WHERE p.kind IS NOT NULL) AS pillars
                        FROM component c
@@ -225,10 +225,11 @@ class CoreEngine:
                        GROUP BY c.id ORDER BY c.sort_order""",
                     m["id"])
                 result.append({
-                    "module": m["name"], "slug": m["slug"],
+                    "module": m["name"], "slug": m["slug"], "assembler": m["assembler"],
                     "components": [{
                         "name": c["name"], "slug": c["slug"],
                         "kind": c["kind"], "target": c["target"],
+                        "meta": json.loads(c["meta"]) if isinstance(c["meta"], str) else (c["meta"] or {}),
                         "pillars": list(c["pillars"]) if c["pillars"] else []
                     } for c in comps]
                 })
@@ -242,7 +243,7 @@ class CoreEngine:
         """Return a component with all (or one) pillar contents."""
         async with self.pool.acquire() as conn:
             comp = await conn.fetchrow(
-                "SELECT id, name, slug, kind, target FROM component WHERE slug=$1",
+                "SELECT id, name, slug, kind, target, meta FROM component WHERE slug=$1",
                 component_slug)
             if not comp:
                 raise ValueError(f"Component '{component_slug}' not found")
@@ -258,6 +259,7 @@ class CoreEngine:
             return {
                 "name": comp["name"], "slug": comp["slug"],
                 "kind": comp["kind"], "target": comp["target"],
+                "meta": json.loads(comp["meta"]) if isinstance(comp["meta"], str) else (comp["meta"] or {}),
                 "pillars": {
                     p["kind"]: {"content": p["content"], "lang": p["lang"]}
                     for p in pillars
@@ -307,22 +309,24 @@ class CoreEngine:
     async def read_all_modules(self) -> list[dict]:
         """Read all modules ordered."""
         async with self.pool.acquire() as conn:
-            rows = await conn.fetch("SELECT id, name, slug FROM module ORDER BY sort_order")
+            rows = await conn.fetch("SELECT id, name, slug, assembler FROM module ORDER BY sort_order")
             return [dict(r) for r in rows]
 
     async def read_components(self, module_id: int) -> list[dict]:
         """Read all components for a module with their pillars."""
         async with self.pool.acquire() as conn:
             comps = await conn.fetch(
-                "SELECT id, name, slug, kind, target FROM component WHERE module_id=$1 ORDER BY sort_order",
+                "SELECT id, name, slug, kind, target, meta FROM component WHERE module_id=$1 ORDER BY sort_order",
                 module_id)
             result = []
             for c in comps:
                 pillars = await conn.fetch(
                     "SELECT kind, content, lang FROM pillar WHERE component_id=$1 ORDER BY kind",
                     c["id"])
+                meta_dict = json.loads(c["meta"]) if isinstance(c["meta"], str) else (c["meta"] or {})
                 result.append({
                     **dict(c),
+                    "meta": meta_dict,
                     "pillars": {p["kind"]: p["content"] for p in pillars}
                 })
             return result

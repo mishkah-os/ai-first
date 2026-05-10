@@ -1,0 +1,177 @@
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
+body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+
+/* ── Light Theme (default) ──────────────────────────── */
+:root{
+  /* Surface */
+  --mas-bg:          #ffffff;
+  --mas-bg-soft:     #f8fafc;
+  --mas-bg-muted:    #f1f5f9;
+  --mas-bg-elevated: #ffffff;
+  --mas-overlay:     rgba(0,0,0,0.5);
+
+  /* Text */
+  --mas-text:        #0f172a;
+  --mas-text-soft:   #475569;
+  --mas-text-muted:  #94a3b8;
+  --mas-text-inv:    #ffffff;
+
+  /* Brand */
+  --mas-primary:     #4361ee;
+  --mas-primary-soft:#4361ee18;
+  --mas-secondary:   #7209b7;
+  --mas-accent:      #f72585;
+
+  /* Semantic */
+  --mas-success:     #10b981;
+  --mas-warning:     #f59e0b;
+  --mas-danger:      #ef4444;
+  --mas-info:        #3b82f6;
+
+  /* Border */
+  --mas-border:      #e2e8f0;
+  --mas-border-soft: #f1f5f9;
+  --mas-ring:        #4361ee40;
+
+  /* Spacing scale (matches Tailwind) */
+  --mas-sp-1: 0.25rem;  --mas-sp-2: 0.5rem;
+  --mas-sp-3: 0.75rem;  --mas-sp-4: 1rem;
+  --mas-sp-6: 1.5rem;   --mas-sp-8: 2rem;
+  --mas-sp-12:3rem;      --mas-sp-16:4rem;
+
+  /* Radius */
+  --mas-radius-sm:   4px;
+  --mas-radius:      8px;
+  --mas-radius-lg:   12px;
+  --mas-radius-xl:   16px;
+  --mas-radius-full: 9999px;
+
+  /* Shadow */
+  --mas-shadow-sm:   0 1px 2px rgba(0,0,0,0.05);
+  --mas-shadow:      0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06);
+  --mas-shadow-md:   0 4px 6px rgba(0,0,0,0.07), 0 2px 4px rgba(0,0,0,0.06);
+  --mas-shadow-lg:   0 10px 15px rgba(0,0,0,0.1), 0 4px 6px rgba(0,0,0,0.05);
+  --mas-shadow-xl:   0 20px 25px rgba(0,0,0,0.1), 0 8px 10px rgba(0,0,0,0.04);
+
+  /* Typography */
+  --mas-font:        'Inter', ui-sans-serif, system-ui, sans-serif;
+  --mas-font-mono:   'JetBrains Mono', ui-monospace, monospace;
+  --mas-font-ar:     'Tajawal', 'Cairo', var(--mas-font);
+  --mas-leading:     1.6;
+
+  /* Transition */
+  --mas-ease:        cubic-bezier(0.4, 0, 0.2, 1);
+  --mas-duration:    150ms;
+  --mas-transition:  all var(--mas-duration) var(--mas-ease);
+
+  /* Z-index scale */
+  --mas-z-dropdown:  50;
+  --mas-z-sticky:    100;
+  --mas-z-modal:     200;
+  --mas-z-toast:     300;
+}
+
+/* ── Dark Theme ─────────────────────────────────────── */
+[data-theme="dark"],
+.dark{
+  --mas-bg:          #0f172a;
+  --mas-bg-soft:     #1e293b;
+  --mas-bg-muted:    #334155;
+  --mas-bg-elevated: #1e293b;
+  --mas-overlay:     rgba(0,0,0,0.7);
+
+  --mas-text:        #f1f5f9;
+  --mas-text-soft:   #cbd5e1;
+  --mas-text-muted:  #64748b;
+  --mas-text-inv:    #0f172a;
+
+  --mas-border:      #334155;
+  --mas-border-soft: #1e293b;
+  --mas-ring:        #4361ee60;
+
+  --mas-shadow-sm:   0 1px 2px rgba(0,0,0,0.3);
+  --mas-shadow:      0 1px 3px rgba(0,0,0,0.4);
+  --mas-shadow-md:   0 4px 6px rgba(0,0,0,0.4);
+  --mas-shadow-lg:   0 10px 15px rgba(0,0,0,0.5);
+}
+
+/* ── Semantic Classes (use with or without Tailwind) ── */
+body{
+  font-family: var(--mas-font);
+  line-height: var(--mas-leading);
+  color: var(--mas-text);
+  background: var(--mas-bg);
+}
+[dir="rtl"] body{ font-family: var(--mas-font-ar); }
+
+/* Cards */
+.mas-card{
+  background: var(--mas-bg-elevated);
+  border: 1px solid var(--mas-border-soft);
+  border-radius: var(--mas-radius-lg);
+  box-shadow: var(--mas-shadow);
+  padding: var(--mas-sp-6);
+}
+
+/* Inputs */
+.mas-input{
+  background: var(--mas-bg-soft);
+  border: 1px solid var(--mas-border);
+  border-radius: var(--mas-radius);
+  padding: var(--mas-sp-2) var(--mas-sp-3);
+  color: var(--mas-text);
+  transition: var(--mas-transition);
+  outline: none;
+}
+.mas-input:focus{
+  border-color: var(--mas-primary);
+  box-shadow: 0 0 0 3px var(--mas-ring);
+}
+
+/* Buttons */
+.mas-btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:var(--mas-sp-2);
+  padding: var(--mas-sp-2) var(--mas-sp-4);
+  border-radius: var(--mas-radius);
+  font-weight: 600; font-size: 0.875rem;
+  border: none; cursor: pointer;
+  transition: var(--mas-transition);
+}
+.mas-btn:active{ transform: scale(0.97); }
+.mas-btn-primary{ background:var(--mas-primary);color:var(--mas-text-inv); }
+.mas-btn-primary:hover{ filter:brightness(1.1); }
+.mas-btn-danger{ background:var(--mas-danger);color:var(--mas-text-inv); }
+.mas-btn-success{ background:var(--mas-success);color:var(--mas-text-inv); }
+.mas-btn-ghost{ background:transparent;color:var(--mas-text-soft);border:1px solid var(--mas-border); }
+.mas-btn-ghost:hover{ background:var(--mas-bg-muted); }
+
+/* Badge */
+.mas-badge{
+  display:inline-flex;align-items:center;
+  padding: 2px var(--mas-sp-2);
+  border-radius: var(--mas-radius-full);
+  font-size: 0.75rem; font-weight: 600;
+  background: var(--mas-primary-soft);
+  color: var(--mas-primary);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar{ width:6px;height:6px; }
+::-webkit-scrollbar-track{ background:var(--mas-bg-soft); }
+::-webkit-scrollbar-thumb{ background:var(--mas-border);border-radius:3px; }
+::-webkit-scrollbar-thumb:hover{ background:var(--mas-text-muted); }
+
+/* Focus ring */
+:focus-visible{
+  outline: 2px solid var(--mas-primary);
+  outline-offset: 2px;
+}
+
+/* Transition utilities */
+.mas-fade-in{ animation: masFadeIn var(--mas-duration) var(--mas-ease); }
+@keyframes masFadeIn{ from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:none} }
+
+.mas-slide-in{ animation: masSlideIn 250ms var(--mas-ease); }
+@keyframes masSlideIn{ from{opacity:0;transform:translateX(16px)} to{opacity:1;transform:none} }
+

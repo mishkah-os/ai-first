@@ -285,7 +285,8 @@ class Compiler:
         style   = p.get("style", "")
 
         if target == "mas-js":
-            return self._render_mas_js(comp["slug"], schema, logic, template, style)
+            meta = comp.get("meta", {})
+            return self._render_mas_js(comp["slug"], schema, logic, template, style, meta)
         elif target == "cpp":
             return self._render_raw(schema, logic)
         elif target == "python":
@@ -296,17 +297,23 @@ class Compiler:
             return self._render_raw(schema, logic)
 
     def _render_mas_js(self, slug: str, schema: str, logic: str,
-                       template: str, style: str) -> str:
-        """Render a MAS JS module with all 4 pillars."""
+                       template: str, style: str, meta: dict = None) -> str:
+        """Render a MAS JS module with all 4 pillars (V2 Protocol)."""
+        meta = meta or {}
         parts = [f"MAS.module('{slug}', {{"]
         if schema:
-            parts.append(f"  db: {schema},\n")
+            parts.append(f"  db: {schema},")
+        if meta.get('persist'):
+            parts.append(f"  persist: {json.dumps(meta['persist'])},")
+        if meta.get('fetchUrl'):
+            url = meta['fetchUrl']
+            parts.append(f"  fetch: async ($) => {{ $.set({{loading:true}}); try {{ const r = await fetch('{url}'); $.set({{items: await r.json(), loading:false}}); }} catch(e) {{ $.set({{error:e.message,loading:false}}); }} }},")
         if logic:
-            parts.append(f"  orders: {logic},\n")
+            parts.append(f"  orders: {logic},")
         if template:
-            parts.append(f"  body: {template},\n")
+            parts.append(f"  ui: {template},")
         if style:
-            parts.append(f"  style: `{style}`")
+            parts.append(f"  css: `{style}`")
         parts.append("});")
         return "\n".join(parts)
 

@@ -79,37 +79,50 @@ json unwrapInput(const json &v) {
   return v;
 }'''},
 
-"column-meta": {"logic": r'''
-struct ColumnMeta {
-  std::string name, trans_name, data_type, type, referenced_table;
-  std::string referenced_column = "id", search_columns, component;
-  int max_length = 0;
-  bool is_nullable=true, is_identity=false, is_primary_key=false, isreferences=false;
-  json default_value = nullptr;
-};
-struct ObjectMeta {
-  std::string name;
-  std::vector<ColumnMeta> columns;
-};
-ColumnMeta parseColumn(const json &v) {
-  ColumnMeta c;
-  c.name = jsonStr(v,"name"); c.trans_name = jsonStr(v,"trans_name");
-  c.data_type = toLower(jsonStr(v,"data_type")); c.type = jsonStr(v,"type");
-  c.max_length = jsonInt(v,"max_length"); c.is_nullable = jsonBool(v,"is_nullable",true);
-  c.is_primary_key = jsonBool(v,"is_primary_key"); c.isreferences = jsonBool(v,"isreferences");
-  c.referenced_table = jsonStr(v,"ReferencedTable");
-  c.referenced_column = jsonStr(v,"ReferencedColumnName","id");
-  c.search_columns = jsonStr(v,"search_columns");
-  return c;
-}
-ObjectMeta parseObjectMeta(const json &v) {
-  if (!v.is_object()) throw std::runtime_error("Object metadata missing");
-  ObjectMeta o; o.name = v.value("name","");
-  if (o.name.empty()) throw std::runtime_error("Object name required");
-  if (!v.contains("columns")||!v["columns"].is_array()) throw std::runtime_error("Columns required");
-  for (auto &c : v["columns"]) o.columns.push_back(parseColumn(c));
-  return o;
+"filter-engine": {"logic": r'''
+std::string buildDirectFilter(const ColumnMeta &col, const std::string &cond, const json &val, std::vector<std::optional<std::string>> &vals) {
+  std::string f = "t." + quoteIdent(col.name);
+  std::string c = toLower(trim(cond));
+  if (c=="is null") return f + " IS NULL";
+  if (c=="is not null") return f + " IS NOT NULL";
+  if (c=="like" || c=="contains") {
+    vals.push_back("%" + escapeLike(stringifyValue(val)) + "%");
+    return f + "::text ILIKE $" + std::to_string(vals.size());
+  }
+  std::string op = (c=="=="||c=="=") ? "=" : (c=="!="||c=="<>") ? "<>" : c;
+  vals.push_back(stringifyValue(normalizeValue(col, val)));
+  return f + " " + op + " $" + std::to_string(vals.size());
 }'''},
+
+"query-builder": {"logic": r'''
+std::string buildWhere(const ObjectMeta &obj, const json &filters, std::vector<std::optional<std::string>> &vals, const ReqCtx &ctx) {
+  std::vector<std::string> parts;
+  if (filters.is_array()) {
+    for (auto &f : filters) {
+      auto col = findColumn(obj, jsonStr(f, "column_name"));
+      if (!col) continue;
+      parts.push_back(buildDirectFilter(*col, jsonStr(f, "cond", "="), f["value"], vals));
+    }
+  }
+  if (findColumn(obj, "tenant_id") && ctx.tenantId) {
+    vals.push_back(std::to_string(*ctx.tenantId));
+    parts.push_back("t.\"tenant_id\" = $" + std::to_string(vals.size()));
+  }
+  return parts.empty() ? "" : " WHERE " + joinVec(parts, " AND ");
+}'''},
+
+"crud-handler": {"logic": r'''
+json handleRead(PgRuntime &pg, const json &p) {
+  ObjectMeta obj = parseObjectMeta(p.at("object"));
+  ReqCtx ctx = parseCtx(p.value("context", json::object()));
+  std::vector<std::optional<std::string>> vals;
+  std::string where = buildWhere(obj, p.value("filters", json::array()), vals, ctx);
+  std::string sql = "SELECT * FROM " + quoteIdent(obj.name) + " t" + where + " LIMIT 100";
+  PGresult *r = pg.execP(sql, vals);
+  // ... transform R to json data ...
+  return {{"data", json::array()}, {"count", 0}};
+}
+''', "schema": ""},
 
 "alias-resolver": {"logic": r'''
 const ColumnMeta* findColumn(const ObjectMeta &o, const std::string &n) {
