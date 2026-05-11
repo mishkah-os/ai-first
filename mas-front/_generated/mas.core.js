@@ -13,9 +13,9 @@ var HEAD_CAPABLE={title:1,meta:1,link:1,base:1,style:1,script:1};
 var RTL_LANGS={ar:1,fa:1,he:1,ur:1};
 
 // ── Hooks (Observer pattern — zero core pollution) ──────
-var _hooks={onError:[],onRender:[],onState:[]};
+var _hooks={onError:[],onRender:[],onState:[],onMount:[]};
 function hook(name,fn){if(_hooks[name])_hooks[name].push(fn);return function(){_hooks[name]=_hooks[name].filter(function(f){return f!==fn;});};}
-function emit(name,data){var hs=_hooks[name];if(hs)for(var i=0;i<hs.length;i++)try{hs[i](data);}catch(e){console.error('[MAS:hook]',e);}}
+function emit(name,data){var hs=_hooks[name];if(hs)for(var i=0;i<hs.length;i++)try{hs[i](data);}catch(e){console.error("[MAS:hook]",e);}}
 
 // ── i18n — optional utility (NOT required by core) ──────
 // With database-level flatting, data arrives pre-translated.
