@@ -11,7 +11,7 @@ from pathlib import Path
 
 from config import DATABASE_URL, QDML_SCHEMA, POOL_MIN, POOL_MAX, HOST, PORT
 from qdml_engine import QDMLEngine
-from routes import auth, qdml, compile
+from routes import auth, qdml, compile, ai, kits
 
 
 @asynccontextmanager
@@ -53,6 +53,8 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(qdml.router)
 app.include_router(compile.router)
+app.include_router(ai.router)
+app.include_router(kits.router)
 
 generated_dir = Path(__file__).parent.parent / "mas-front" / "_generated"
 if generated_dir.exists():
@@ -79,6 +81,9 @@ async def root():
             "auth": "/api/auth/login",
             "qdml": "/api/qdml",
             "compile": "/api/compile/{component}",
+            "ai": "/api/ai",
+            "kits": "/api/kits",
+            "pipelines": "/api/kits/pipelines",
             "stats": "/api/qdml/stats",
             "mini": "/api/qdml/mini/{project}",
             "health": "/health",
