@@ -93,7 +93,7 @@ async def _compile(engine, selector):
 
 
 async def _create(engine, pool, schema, target, prompt, mini_code):
-    """Create new component from AI specification"""
+    """Create new component from AI specification — uses Bedrock if available"""
     parts = target.split("/") if target else []
 
     if len(parts) < 3:
@@ -131,13 +131,28 @@ async def _create(engine, pool, schema, target, prompt, mini_code):
     await engine.create_component(module_slug, component_slug.replace('-', ' ').title(), component_slug,
                                   kind="screen", target="mas-js", project_slug=project_slug)
 
-    # Generate code (placeholder — in production, call Bedrock/Claude)
-    code = mini_code or f"""// {component_slug} — Generated from prompt
+    # Generate code — use Bedrock AI if available, otherwise use mini_code/template
+    from bedrock_client import get_bedrock_client
+    bedrock = get_bedrock_client()
+    ai_generated = False
+
+    if bedrock.available and prompt:
+        try:
+            code = await bedrock.generate_component(
+                description=prompt,
+                kit_type="screen" if "screen" in component_slug else "service",
+                reference_code=mini_code or ""
+            )
+            ai_generated = True
+        except Exception as e:
+            code = None
+
+    if not ai_generated or not code:
+        code = mini_code or f"""// {component_slug} — Generated from prompt
 // Prompt: {prompt[:200]}
-// TODO: Implement with AI-generated code
 
 export default function {component_slug.replace('-', '_')}() {{
-    return '<div class="{component_slug}">Generated Component</div>';
+    return '<div class="{component_slug}">Component generated — modify with AI</div>';
 }}
 """
 
@@ -146,13 +161,14 @@ export default function {component_slug.replace('-', '_')}() {{
     return {
         "success": True,
         "created": f"{project_slug}/{module_slug}/{component_slug}",
+        "ai_generated": ai_generated,
         "mini_code": code[:500],
         "next_actions": ["modify", "compile", "test"]
     }
 
 
 async def _modify(engine, pool, schema, selector, prompt, content):
-    """Modify existing component bulk"""
+    """Modify existing component bulk — uses Bedrock if content not provided"""
     project = selector.get("project")
     component = selector.get("component")
     bulk = selector.get("bulk", "main")
@@ -160,9 +176,26 @@ async def _modify(engine, pool, schema, selector, prompt, content):
     if not component:
         raise HTTPException(400, "selector.component required")
 
+    # If no content provided, use AI to generate modification
+    if not content and prompt:
+        from bedrock_client import get_bedrock_client
+        bedrock = get_bedrock_client()
+
+        if bedrock.available:
+            # Get current code
+            current = await engine.reveal(component, bulk, level=3, project_slug=project)
+            if current and isinstance(current, dict) and current.get("content"):
+                try:
+                    content = await bedrock.modify_component(current["content"], prompt)
+                except Exception as e:
+                    raise HTTPException(500, f"AI modification failed: {str(e)}")
+            else:
+                raise HTTPException(404, f"Bulk '{component}/{bulk}' not found")
+        else:
+            raise HTTPException(400, "content required (Bedrock not configured)")
+
     if not content:
-        # In production, would use AI to generate modification
-        raise HTTPException(400, "content required (AI generation not yet connected)")
+        raise HTTPException(400, "content required")
 
     result = await engine.mutate_bulk(component, bulk, content, changed_by="ai", reason=prompt or "AI modification", project_slug=project)
 
@@ -173,6 +206,7 @@ async def _modify(engine, pool, schema, selector, prompt, content):
         "success": True,
         "modified": f"{component}/{bulk}",
         "reason": prompt,
+        "ai_modified": True,
         "next_actions": ["reveal", "compile", "test"]
     }
 

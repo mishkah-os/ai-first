@@ -1,0 +1,10 @@
+{
+  "name": "mas-erp-v2",
+  "version": "0.1.0",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js",
+    "check": "node --check server.js && node --check mas-store-v3.js && node --check dashboard-kit-v2.js && node --check erp-app.js"
+  },
+  "dependencies": {}
+}

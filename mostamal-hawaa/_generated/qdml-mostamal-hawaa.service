@@ -1,0 +1,15 @@
+[Unit]
+Description=QDML mostamal-hawaa Service
+After=network.target postgresql.service
+
+[Service]
+Type=simple
+WorkingDirectory=/srv/apps/ai-first/mostamal-hawaa/_generated
+Environment=PORT=9001
+Environment=DATABASE_URL=postgresql://ai_auto:233f290cb68a514e3bb740d134f5bd50@127.0.0.1:5432/ai_auto
+ExecStart=/usr/bin/node server.js
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

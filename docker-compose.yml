@@ -1,18 +1,17 @@
 version: '3.8'
 
 services:
-  postgres-ai-first:
-    image: postgres:16
-    container_name: ai_first_db
-    environment:
-      POSTGRES_USER: aifirst
-      POSTGRES_PASSWORD: aifirst_password
-      POSTGRES_DB: ai_first_platform
+  qdml-api:
+    build: ./core
     ports:
-      - "5433:5432"
+      - "8001:8001"
+    environment:
+      DATABASE_URL: postgresql://ai_auto:233f290cb68a514e3bb740d134f5bd50@host.docker.internal:5432/ai_auto
+      QDML_SCHEMA: qdml
+      HOST: 0.0.0.0
+      PORT: 8001
     volumes:
-      - pgdata_ai_first:/var/lib/postgresql/data
-    restart: always
-
-volumes:
-  pgdata_ai_first:
+      - ./mas-front/_generated:/app/static
+    restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"

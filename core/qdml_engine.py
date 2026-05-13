@@ -4,6 +4,7 @@ All code lives in the database. Files are compiled artifacts only.
 """
 import json, time, hashlib, secrets
 from datetime import datetime, timezone, timedelta
+from platform_pipeline import strip_code_fence
 
 MARKER_MAP = {
     "javascript": ("// m-bulk:{name}", "// m-end:{name}"),
@@ -104,6 +105,7 @@ class QDMLEngine:
     async def create_bulk(self, component_slug, bulk_name, content, lang="javascript",
                           bulk_order=0, reveal="", depends="", exports="", overflow=False, project_slug=None):
         t0 = time.perf_counter()
+        content = strip_code_fence(content)
         if project_slug:
             cid_row = await self._fetch_one(
                 f"""SELECT c.id, p.id as project_id FROM {self.schema}.component c
@@ -134,6 +136,7 @@ class QDMLEngine:
 
     async def mutate_bulk(self, component_slug, bulk_name, new_content, changed_by="ai", reason="", project_slug=None):
         t0 = time.perf_counter()
+        new_content = strip_code_fence(new_content)
         if project_slug:
             row = await self._fetch_one(
                 f"""SELECT p2.id, p2.content, pr.id as project_id FROM {self.schema}.pillar p2

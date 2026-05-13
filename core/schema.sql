@@ -21,6 +21,20 @@ CREATE TABLE IF NOT EXISTS project (
     description TEXT DEFAULT '',
     db_schema   TEXT DEFAULT 'public',
     status      TEXT DEFAULT 'active' CHECK (status IN ('draft','active','archived')),
+    icon        TEXT DEFAULT 'project',
+    logo_url    TEXT DEFAULT '',
+    base_domain TEXT,
+    subdomain   TEXT,
+    port        INT,
+    service_name TEXT,
+    service_type TEXT DEFAULT 'node',
+    nginx_domain TEXT,
+    test_url    TEXT,
+    docs_en_md  TEXT DEFAULT '',
+    docs_ar_md  TEXT DEFAULT '',
+    test_credentials JSONB DEFAULT '{}',
+    playwright_script TEXT,
+    curl_tests  JSONB DEFAULT '[]',
     created_at  TIMESTAMPTZ DEFAULT now()
 );
 
@@ -45,6 +59,9 @@ CREATE TABLE IF NOT EXISTS component (
     kind        TEXT NOT NULL DEFAULT 'library' CHECK (kind IN ('screen','widget','service','binary','library','config')),
     target      TEXT NOT NULL DEFAULT 'mas-js' CHECK (target IN ('mas-js','node','python','cpp','sql','docker','bun')),
     meta        JSONB DEFAULT '{}',
+    classification TEXT DEFAULT 'custom',
+    description TEXT DEFAULT '',
+    ai_category TEXT DEFAULT 'frontend',
     sort_order  INT DEFAULT 0,
     created_at  TIMESTAMPTZ DEFAULT now(),
     updated_at  TIMESTAMPTZ DEFAULT now(),
@@ -63,6 +80,8 @@ CREATE TABLE IF NOT EXISTS pillar (
     depends         TEXT DEFAULT '',
     exports         TEXT DEFAULT '',
     overflow        BOOLEAN DEFAULT false,
+    description     TEXT DEFAULT '',
+    human_summary   TEXT DEFAULT '',
     lines           INT GENERATED ALWAYS AS (array_length(string_to_array(content, E'\n'), 1)) STORED,
     chars           INT GENERATED ALWAYS AS (char_length(content)) STORED,
     bytes           INT GENERATED ALWAYS AS (octet_length(content)) STORED,
@@ -210,6 +229,46 @@ CREATE TABLE IF NOT EXISTS service_registry (
     meta        JSONB DEFAULT '{}',
     created_at  TIMESTAMPTZ DEFAULT now(),
     UNIQUE(name, port)
+);
+
+CREATE TABLE IF NOT EXISTS component_endpoint (
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    component_id UUID NOT NULL REFERENCES component(id) ON DELETE CASCADE,
+    endpoint_type TEXT NOT NULL DEFAULT 'preview',
+    subdomain  TEXT,
+    path        TEXT NOT NULL DEFAULT '/',
+    port        INT,
+    url         TEXT NOT NULL,
+    health_url  TEXT,
+    is_primary  BOOLEAN DEFAULT false,
+    meta        JSONB DEFAULT '{}',
+    created_at  TIMESTAMPTZ DEFAULT now(),
+    updated_at  TIMESTAMPTZ DEFAULT now(),
+    UNIQUE(component_id, endpoint_type, path)
+);
+
+CREATE TABLE IF NOT EXISTS service_config (
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    component_id UUID NOT NULL REFERENCES component(id) ON DELETE CASCADE,
+    port        INT,
+    env_vars    JSONB DEFAULT '{}',
+    health_check TEXT,
+    startup_cmd TEXT,
+    test_routes JSONB DEFAULT '[]',
+    UNIQUE(component_id)
+);
+
+CREATE TABLE IF NOT EXISTS test_suite (
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    component_id UUID NOT NULL REFERENCES component(id) ON DELETE CASCADE,
+    test_name   TEXT NOT NULL,
+    test_type   TEXT NOT NULL,
+    test_code   TEXT,
+    curl_config JSONB,
+    assertions  JSONB,
+    last_run    TIMESTAMPTZ,
+    last_result JSONB,
+    UNIQUE(component_id, test_name)
 );
 
 -- ============================================
